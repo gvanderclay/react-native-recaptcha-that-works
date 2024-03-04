@@ -42,57 +42,58 @@ const getTemplate = (
   hideBadge: boolean,
 ) => {
   const {siteKey, theme, lang, size, action} = params;
-  // const grecaptchaObject = enterprise
-  //   ? 'window.grecaptcha.enterprise'
-  //   : 'window.grecaptcha';
 
-  // const jsScript = enterprise
-  //   ? `<script async src="https://${recaptchaDomain}/recaptcha/enterprise.js?onload=renderRecaptcha&render=explicit"></script>`
-  //   : `<script src="https://${recaptchaDomain}/recaptcha/api.js?hl={{lang}}&onload=onLoad"></script>`;
+  const grecaptchaObject = enterprise ? 'grecaptcha.enterprise' : 'grecaptcha';
+
   const scriptUrl = enterprise
-    ? `https://${recaptchaDomain}/recaptcha/enterprise.js?render=explicit`
-    : `https://${recaptchaDomain}/recaptcha/api.js?render=explicit`;
+    ? `https://${recaptchaDomain}/recaptcha/enterprise.js?render=explicit&hl=${lang}`
+    : `https://${recaptchaDomain}/recaptcha/api.js?render=explicit&hl=${lang}`;
 
-  let template = `
-    <!DOCTYPE html>
-    <html lang="{{lang}}">
-    
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title></title>
+  return `
+<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
 
-    
-        <style>
-            html,
-            body,
-            .container {
-                height: 100%;
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                background-color: transparent;
-            }
-    
-            .container {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
 
-            ${hideBadge ? '.grecaptcha-badge { visibility: hidden; }' : ''}
-        </style>
-    </head>
-    
-    <body>
-    <script>
+    <style>
+        html,
+        body,
+        .container {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+        }
 
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        ${hideBadge ? '.grecaptcha-badge { visibility: hidden; }' : ''}
+    </style>
+</head>
+
+<body>
+  <script>
     const action = "${action}";
     const siteKey = "${siteKey}";
     const scriptUrl = "${scriptUrl}";
     const size = "${size}";
     const theme = "${theme}";
     
+    const onClose = () => {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({
+          close: [],
+        })
+      );
+    };
     
     const onLoad = () => {
       window.ReactNativeWebView.postMessage(
@@ -110,10 +111,10 @@ const getTemplate = (
       );
     };
     
-    const onExpire = (message) => {
+    const onExpire = () => {
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
-          expire: [message],
+          expire: [],
         })
       );
     };
@@ -125,103 +126,114 @@ const getTemplate = (
         })
       );
     };
+
+    const getRecaptchaElement = () => {
+      const iframes = document.getElementsByTagName("iframe");
+      const recaptchaFrame = [...iframes].find(
+        (e) =>
+          typeof e.src === "string" &&
+          e.src.includes("google.com/recaptcha") &&
+          e.src.includes("bframe")
+      );
+      return recaptchaFrame?.parentNode?.parentNode;
+    }
     
-    onExpire("initial script");
-
-    let widget;
-
     const registerOnCloseListener = () => {
-      onExpire("registerOnCloseListener1");
       let lastOpacity = null;
       const onCloseObserver = new MutationObserver(() => {
-        onExpire("registerOnCloseListener2");
-        const iframes = document.getElementsByTagName('iframe');
-        const iframe = Array.prototype.find
-                    .call(iframes, e => e.src.includes('google.com/recaptcha/api2/bframe'));
-        onExpire("registerOnCloseListener3");
-
-        if (iframe) {
-          onExpire("registerOnCloseListener4");
-          const recaptchaElement = iframe.parentNode?.parentNode;
-          if (recaptchaElement && lastOpacity !== null && lastOpacity !== recaptchaElement.style.opacity && recaptchaElement.style.opacity == 0) { 
-            onExpire("registerOnCloseListener8");
+        const recaptchaElement = getRecaptchaElement();
+        if (recaptchaElement) {
+          if (
+            lastOpacity !== null &&
+            lastOpacity !== recaptchaElement.style.opacity &&
+            recaptchaElement.style.opacity == 0
+          ) {
             onClose();
           }
           lastOpacity = recaptchaElement.style.opacity;
-        } else {
-          onExpire("registerOnCloseListener5");
         }
       });
+    
+      onCloseObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style"],
+      });
+    };
 
-      onCloseObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
-    }
+    const getRecaptchaFn = (fnName) => {
+      const recaptcha = window.${grecaptchaObject};
+      if (
+        recaptcha &&
+        recaptcha[fnName] &&
+        typeof recaptcha[fnName] === "function"
+      ) {
+        return recaptcha[fnName];
+      }
+      return () => {};
+    };
 
-    const renderRecaptcha = function() {
-      onExpire("renderRecaptcha1");
-      const recaptchaParams = {
-        sitekey: siteKey,
-        size,
-        theme,
-        callback: onVerify,
-        "expired-callback": onExpire,
-        "error-callback": onError,
-      };
-      onExpire("renderRecaptcha2");
+    
+    let widget;
+
+    const recaptchaParams = {
+      sitekey: siteKey,
+      size,
+      theme,
+      callback: onVerify,
+      "expired-callback": onExpire,
+      "error-callback": onError,
+    };
+    
+    const handleRecaptchaReady = () => {
+      const wrapper = document.createElement("div");
+      wrapper.setAttribute("id", "recaptcha-wrapper");
+      widget = getRecaptchaFn("render")(wrapper, recaptchaParams);
+      registerOnCloseListener();
+      const containerElement = document.querySelector(".container");
+      if(!containerElement) {
+        onError("Failed to find container element");
+        return;
+      }
+      containerElement.appendChild(wrapper)
+      onLoad();
+    };
+    
+    const renderRecaptcha = () => {
       if (action) {
         recaptchaParams.action = action;
       }
-      onExpire("renderRecaptcha3" + JSON.stringify(Object.keys(window.grecaptcha.enterprise)));
-      window.grecaptcha.enterprise.ready(() => {
-        onExpire("ready")
-        const wrapper = document.createElement('div');
-        wrapper.setAttribute('id', 'recaptcha-wrapper')
-        onExpire("renderRecaptcha4");
-        widget = window.grecaptcha.enterprise.render(wrapper, recaptchaParams);
-        onExpire("renderRecaptcha5");
-        document.querySelector('.container').appendChild(wrapper);
-        onExpire("renderRecaptcha6");
-        onLoad();
-      });
+      getRecaptchaFn("ready")(handleRecaptchaReady);
     };
-
     
-    onExpire("building script");
-    const script = document.createElement('script');
-    onExpire("created script" + JSON.stringify(script));
-    onExpire(scriptUrl);
-    script.src = scriptUrl;
-    script.async = true;
-    script.onload = renderRecaptcha;
-    script.onerror = () => onError('Failed to load reCAPTCHA script');
+    const buildScript = () => {
+      const script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.defer = true;
+      script.onload = renderRecaptcha;
+      script.onerror = (event) => onError("Failed to load reCAPTCHA script");
+      document.body.appendChild(script);
+    };
     
-    document.body.appendChild(script);
-    onExpire("appended");
+    buildScript();
     
     window.rnRecaptcha = {
       execute: () => {
-        onExpire("executing order 66")
-        window.grecaptcha.enterprise.execute(widget);
-        registerOnCloseListener();
-        onExpire("well done")
+        getRecaptchaFn("execute")(widget);
       },
       reset: () => {
-        window.grecaptcha.enterprise.reset(widget);
+        getRecaptchaFn("reset")(widget);
       },
     };
     
-    onExpire("finished initial script")
-            </script>
-        <div class="container">
-        </div>
-    </body>
-    
-    </html>`;
+  </script>
+  <div class="container">
+  </div>
+</body>
 
-  Object.entries(params).forEach(([key, value]) => {
-    template = template.replace(new RegExp(`{{${key}}}`, 'img'), value);
-  });
-
-  return template;
+</html>`;
 };
 
 export default getTemplate;

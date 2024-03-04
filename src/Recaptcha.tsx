@@ -144,7 +144,7 @@ export type RecaptchaProps = {
    *
    * Only works if the `webview` still open after `onVerify` has been called for a long time.
    */
-  onExpire?: (message?: string) => void;
+  onExpire?: () => void;
   /**
    * A callback function, executed when reCAPTCHA encounters an error (usually network connectivity)
    * and cannot continue until connectivity is restored.
@@ -283,7 +283,7 @@ const Recaptcha = forwardRef<RecaptchaRef, RecaptchaProps>(
             handleLoad();
           }
           if (isPayloadExpire(payload)) {
-            onExpire?.(...payload.expire);
+            onExpire?.();
           }
           if (isPayloadError(payload)) {
             handleClose();

@@ -35,7 +35,7 @@ type PayloadLoad = {
 };
 
 type PayloadExpire = {
-  expire: [any];
+  expire: [];
 };
 
 type PayloadVerify = {
