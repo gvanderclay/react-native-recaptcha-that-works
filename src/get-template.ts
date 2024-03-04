@@ -56,6 +56,8 @@ const getTemplate = (
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title></title>
+    <link rel="preconnect" href="https://${recaptchaDomain}">
+    <link rel="preconnect" href="https://${gstaticDomain}" crossorigin>
 
 
     <style>
@@ -177,16 +179,15 @@ const getTemplate = (
     
     let widget;
 
-    const recaptchaParams = {
-      sitekey: siteKey,
-      size,
-      theme,
-      callback: onVerify,
-      "expired-callback": onExpire,
-      "error-callback": onError,
-    };
-    
     const handleRecaptchaReady = () => {
+      const recaptchaParams = {
+        sitekey: siteKey,
+        size,
+        theme,
+        callback: onVerify,
+        "expired-callback": onExpire,
+        "error-callback": onError,
+      };
       const wrapper = document.createElement("div");
       wrapper.setAttribute("id", "recaptcha-wrapper");
       widget = getRecaptchaFn("render")(wrapper, recaptchaParams);
