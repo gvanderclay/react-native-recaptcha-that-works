@@ -130,6 +130,32 @@ const getTemplate = (
 
     let widget;
 
+    const registerOnCloseListener = () => {
+      onExpire("registerOnCloseListener1");
+      let lastOpacity = null;
+      const onCloseObserver = new MutationObserver(() => {
+        onExpire("registerOnCloseListener2");
+        const iframes = document.getElementsByTagName('iframe');
+        const iframe = Array.prototype.find
+                    .call(iframes, e => e.src.includes('google.com/recaptcha/api2/bframe'));
+        onExpire("registerOnCloseListener3");
+
+        if (iframe) {
+          onExpire("registerOnCloseListener4");
+          const recaptchaElement = iframe.parentNode?.parentNode;
+          if (recaptchaElement && lastOpacity !== null && lastOpacity !== recaptchaElement.style.opacity && recaptchaElement.style.opacity == 0) { 
+            onExpire("registerOnCloseListener8");
+            onClose();
+          }
+          lastOpacity = recaptchaElement.style.opacity;
+        } else {
+          onExpire("registerOnCloseListener5");
+        }
+      });
+
+      onCloseObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
+    }
+
     const renderRecaptcha = function() {
       onExpire("renderRecaptcha1");
       const recaptchaParams = {
@@ -148,6 +174,7 @@ const getTemplate = (
       window.grecaptcha.enterprise.ready(() => {
         onExpire("ready")
         const wrapper = document.createElement('div');
+        wrapper.setAttribute('id', 'recaptcha-wrapper')
         onExpire("renderRecaptcha4");
         widget = window.grecaptcha.enterprise.render(wrapper, recaptchaParams);
         onExpire("renderRecaptcha5");
@@ -156,7 +183,7 @@ const getTemplate = (
         onLoad();
       });
     };
-    
+
     
     onExpire("building script");
     const script = document.createElement('script');
@@ -174,6 +201,7 @@ const getTemplate = (
       execute: () => {
         onExpire("executing order 66")
         window.grecaptcha.enterprise.execute(widget);
+        registerOnCloseListener();
         onExpire("well done")
       },
       reset: () => {
